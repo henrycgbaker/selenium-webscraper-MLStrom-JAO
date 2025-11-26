@@ -1,7 +1,12 @@
 """CLI interface for web scraper framework."""
+import sys
+from pathlib import Path
+
+# Add current directory to Python path to fix imports
+sys.path.insert(0, str(Path(__file__).parent))
+
 import click
 from datetime import datetime
-from pathlib import Path
 
 from config import ScraperConfig
 from scrapers.jao_scraper import JAOScraper
