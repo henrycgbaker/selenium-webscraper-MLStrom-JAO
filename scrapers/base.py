@@ -5,11 +5,11 @@ from pathlib import Path
 from typing import List, Optional
 from dateutil.rrule import rrule, DAILY
 
-from ..config import ScraperConfig
-from ..utils.state import StateManager, DownloadStatus
-from ..utils.progress import ProgressLogger
-from ..utils.validation import CSVValidator
-from ..core.rate_limiter import AdaptiveRateLimiter
+from config import ScraperConfig
+from utils.state import StateManager, DownloadStatus
+from utils.progress import ProgressLogger
+from utils.validation import CSVValidator
+from core.rate_limiter import AdaptiveRateLimiter
 
 
 class BaseScraper(ABC):

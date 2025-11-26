@@ -1,16 +1,17 @@
 """JAO Publication Tool scraper for maxNetPos data."""
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
 import time
+import zipfile
 
 from selenium.webdriver.common.by import By
 
-from .base import BaseScraper
-from ..config import ScraperConfig
-from ..utils.validation import CSVValidator, create_jao_validator
-from ..core.api_client import APIClient, APIClientError
-from ..core.selenium_client import SeleniumClient, SeleniumClientError
+from scrapers.base import BaseScraper
+from config import ScraperConfig
+from utils.validation import CSVValidator, create_jao_validator
+from core.api_client import APIClient, APIClientError
+from core.selenium_client import SeleniumClient, SeleniumClientError
 
 
 class JAOScraper(BaseScraper):
@@ -37,13 +38,12 @@ class JAOScraper(BaseScraper):
     API_ENDPOINT = "/api"  # PLACEHOLDER - inspect DevTools Network tab
     USE_API = False  # Set to True once API endpoint is configured
 
-    # Selenium Selectors (to be discovered via page inspection)
-    # TODO: Update these after inspecting page elements
+    # Selenium Selectors
     SELECTORS = {
-        "start_date_input": "input[type='date']",  # PLACEHOLDER
-        "end_date_input": "input[type='date']",  # PLACEHOLDER
-        "download_button": "button.download",  # PLACEHOLDER
-        "csv_button": "button.csv",  # PLACEHOLDER
+        "download_button": "button.pageButton_rpP4hV2OM0",  # Main download button
+        "from_datetime_input": "input.inputBorder",  # From datetime (first one in popup)
+        "to_datetime_input": "input.inputBorder",  # To datetime (second one in popup)
+        "csv_button": "button.popupButton_GRkGEahdXf",  # CSV button in popup
     }
 
     def __init__(self, config: ScraperConfig):
@@ -155,9 +155,6 @@ class JAOScraper(BaseScraper):
 
         Raises:
             SeleniumClientError: If download fails
-
-        NOTE: Element selectors need to be updated based on actual page structure.
-        Use browser DevTools to inspect and find correct selectors.
         """
         # Initialize Selenium client if needed
         if self.selenium_client is None:
@@ -173,41 +170,70 @@ class JAOScraper(BaseScraper):
         # Navigate to page
         self.selenium_client.navigate(self.PAGE_URL)
 
-        # Wait for page to load (wait for main container)
+        # Wait for page to load
         self.selenium_client.wait_for_element("#container", timeout=30)
-
-        # Additional wait for JavaScript to render
-        time.sleep(3)
-
-        # Format date string
-        date_str = target_date.strftime("%Y-%m-%d")
-
-        # TODO: Update selectors and interaction logic based on actual page structure
-        # The following is a TEMPLATE that needs customization:
+        time.sleep(3)  # Additional wait for JavaScript
 
         try:
-            # Example: Set start date
-            # Option 1: If it's a standard date input
-            # self.selenium_client.send_keys(self.SELECTORS["start_date_input"], date_str)
+            # Step 1: Click the main "Download" button to open popup
+            self.selenium_client.click(self.SELECTORS["download_button"])
+            time.sleep(2)  # Wait for popup to appear
 
-            # Option 2: If it's a custom date picker, you may need to:
-            # - Click to open the picker
-            # - Navigate to the correct month/year
-            # - Click the specific day
-            # Example:
-            # self.selenium_client.click("#datePickerButton")
-            # self.selenium_client.click(f"[data-date='{date_str}']")
+            # Format dates
+            # From datetime: target date at 00:00
+            # To datetime: next day at 00:00 (to get full 24 hours)
+            from_datetime_str = target_date.strftime("%Y-%m-%d 00:00")
+            to_datetime_str = (target_date + timedelta(days=1)).strftime("%Y-%m-%d 00:00")
 
-            # Set end date (same as start for single-day download)
-            # self.selenium_client.send_keys(self.SELECTORS["end_date_input"], date_str)
+            # Step 2: Set the FROM datetime using JavaScript
+            # Since inputs are readonly, we use JS to bypass the date/time pickers
+            set_from_datetime_script = f"""
+            var inputs = document.querySelectorAll('input.inputBorder');
+            if (inputs.length >= 2) {{
+                inputs[0].value = '{from_datetime_str}';
+                // Trigger React events
+                var event = new Event('input', {{ bubbles: true }});
+                inputs[0].dispatchEvent(event);
+                event = new Event('change', {{ bubbles: true }});
+                inputs[0].dispatchEvent(event);
+            }}
+            """
+            self.selenium_client.execute_script(set_from_datetime_script)
+            time.sleep(0.5)
 
-            # Click download/export button
-            # self.selenium_client.click(self.SELECTORS["download_button"])
+            # Step 3: Set the TO datetime using JavaScript
+            set_to_datetime_script = f"""
+            var inputs = document.querySelectorAll('input.inputBorder');
+            if (inputs.length >= 2) {{
+                inputs[1].value = '{to_datetime_str}';
+                // Trigger React events
+                var event = new Event('input', {{ bubbles: true }});
+                inputs[1].dispatchEvent(event);
+                event = new Event('change', {{ bubbles: true }});
+                inputs[1].dispatchEvent(event);
+            }}
+            """
+            self.selenium_client.execute_script(set_to_datetime_script)
+            time.sleep(0.5)
 
-            # Click CSV format button (if separate)
-            # self.selenium_client.click(self.SELECTORS["csv_button"])
+            # Step 4: Click the CSV button
+            # Find and click the button with text "CSV"
+            click_csv_button_script = """
+            var buttons = document.querySelectorAll('button.popupButton_GRkGEahdXf');
+            for (var i = 0; i < buttons.length; i++) {{
+                if (buttons[i].textContent.trim() === 'CSV') {{
+                    buttons[i].click();
+                    return true;
+                }}
+            }}
+            return false;
+            """
+            clicked = self.selenium_client.execute_script(click_csv_button_script)
 
-            # Wait for download to complete
+            if not clicked:
+                raise SeleniumClientError("Could not find CSV button")
+
+            # Step 5: Wait for download to complete
             downloaded_file = self.selenium_client.wait_for_download(
                 timeout=self.config.download_timeout
             )
@@ -215,12 +241,42 @@ class JAOScraper(BaseScraper):
             if downloaded_file is None:
                 raise SeleniumClientError("Download timeout - no file received")
 
-            # Rename file to standard format if needed
+            # Define final output path
             output_filename = f"maxNetPos_{target_date.strftime('%Y%m%d')}.csv"
             output_path = self.config.output_dir / output_filename
 
-            if downloaded_file != output_path:
-                downloaded_file.rename(output_path)
+            # Check if downloaded file is a ZIP
+            if zipfile.is_zipfile(downloaded_file):
+                # Extract CSV from ZIP
+                try:
+                    with zipfile.ZipFile(downloaded_file, 'r') as zip_ref:
+                        # Get list of files in ZIP
+                        csv_files = [f for f in zip_ref.namelist() if f.endswith('.csv')]
+
+                        if not csv_files:
+                            raise SeleniumClientError("No CSV file found in ZIP archive")
+
+                        # Extract the first CSV file
+                        csv_filename = csv_files[0]
+                        zip_ref.extract(csv_filename, self.config.output_dir)
+
+                        # Move extracted file to standard name
+                        extracted_path = self.config.output_dir / csv_filename
+                        if output_path.exists():
+                            output_path.unlink()
+                        extracted_path.rename(output_path)
+
+                    # Delete the ZIP file
+                    downloaded_file.unlink()
+
+                except Exception as e:
+                    raise SeleniumClientError(f"Failed to extract ZIP file: {e}")
+            else:
+                # Not a ZIP, just rename if needed
+                if downloaded_file != output_path:
+                    if output_path.exists():
+                        output_path.unlink()
+                    downloaded_file.rename(output_path)
 
             return output_path
 
