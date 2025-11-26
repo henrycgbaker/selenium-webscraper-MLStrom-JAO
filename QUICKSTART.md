@@ -11,7 +11,7 @@ This guide will walk you through configuring and running the scraper for the JAO
 ## Step 1: Install Dependencies
 
 ```bash
-cd webscraper
+cd jao_scraper
 pip install -r requirements.txt
 ```
 

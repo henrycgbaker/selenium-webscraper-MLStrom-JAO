@@ -88,7 +88,7 @@ def jao(
     """Download JAO Publication Tool maxNetPos data.
 
     Example:
-        webscraper jao -s 2022-06-08 -e 2024-12-31 -o ./jao_data
+        jao_scraper jao -s 2022-06-08 -e 2024-12-31 -o ./jao_data
     """
     click.echo("=" * 60)
     click.echo("JAO MaxNetPos Data Scraper")
@@ -134,7 +134,7 @@ def status(state_file):
     """Show status of a scraping session.
 
     Example:
-        webscraper status -s ./data/scraper_state.json
+        jao_scraper status -s ./data/scraper_state.json
     """
     from utils.state import StateManager
 
@@ -185,7 +185,7 @@ def list_dates(state_file, failed_only):
     """List all dates in a scraping session.
 
     Example:
-        webscraper list-dates -s ./data/scraper_state.json --failed-only
+        jao_scraper list-dates -s ./data/scraper_state.json --failed-only
     """
     from utils.state import StateManager, DownloadStatus
 
@@ -221,7 +221,7 @@ def reset(state_file):
     """Reset state file (clear all progress).
 
     Example:
-        webscraper reset -s ./data/scraper_state.json
+        jao_scraper reset -s ./data/scraper_state.json
     """
     from utils.state import StateManager
 

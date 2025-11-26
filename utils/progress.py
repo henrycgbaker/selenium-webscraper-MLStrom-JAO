@@ -47,7 +47,7 @@ class ProgressLogger:
 
     def _setup_logger(self) -> logging.Logger:
         """Setup logger with file and console handlers."""
-        logger = logging.getLogger("webscraper")
+        logger = logging.getLogger("jao_scraper")
         logger.setLevel(logging.DEBUG if self.verbose else logging.INFO)
 
         # Prevent duplicate handlers

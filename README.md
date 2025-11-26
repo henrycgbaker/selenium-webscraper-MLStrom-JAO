@@ -17,7 +17,7 @@ A general-purpose Python framework for automating date-based web scraping tasks 
 2. Install dependencies:
 
 ```bash
-cd webscraper
+cd jao_scraper
 pip install -r requirements.txt
 ```
 
@@ -130,7 +130,7 @@ python main.py reset -s ./data/scraper_state.json
 ### Project Structure
 
 ```
-webscraper/
+jao_scraper/
 ├── scrapers/
 │   ├── base.py           # Abstract base scraper class
 │   ├── jao_scraper.py    # JAO-specific implementation
