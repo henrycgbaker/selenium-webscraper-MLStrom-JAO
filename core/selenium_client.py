@@ -234,17 +234,35 @@ class SeleniumClient:
 
         return self.driver.find_elements(by, selector)
 
-    def wait_for_download(self, timeout: int = 60) -> Optional[Path]:
+    def get_existing_files(self) -> set:
+        """Get set of existing files in download directory.
+
+        Call this before triggering a download to track what's new.
+
+        Returns:
+            Set of file paths currently in download directory
+        """
+        if not self.download_dir:
+            return set()
+        return {f for f in self.download_dir.iterdir() if f.is_file()}
+
+    def wait_for_download(self, timeout: int = 60, existing_files: Optional[set] = None) -> Optional[Path]:
         """Wait for a file to be downloaded.
 
         Args:
             timeout: Maximum time to wait in seconds
+            existing_files: Set of files that existed before download started.
+                           If provided, only new files will be considered.
 
         Returns:
             Path to downloaded file or None
         """
         if not self.download_dir:
             raise SeleniumClientError("Download directory not set")
+
+        # If no existing_files provided, get current snapshot (less reliable)
+        if existing_files is None:
+            existing_files = self.get_existing_files()
 
         end_time = time.time() + timeout
 
@@ -259,13 +277,20 @@ class SeleniumClient:
                 time.sleep(1)
                 continue
 
-            # Look for newest file
-            files = [
-                f for f in self.download_dir.iterdir() if f.is_file() and not f.name.startswith(".")
-            ]
+            # Look for new files (files that didn't exist before)
+            current_files = {f for f in self.download_dir.iterdir() if f.is_file()}
+            new_files = current_files - existing_files
 
-            if files:
-                newest_file = max(files, key=lambda f: f.stat().st_mtime)
+            # Filter out hidden files and common non-download files
+            new_files = {
+                f for f in new_files
+                if not f.name.startswith(".")
+                and not f.name.endswith(".json")  # Exclude state files
+            }
+
+            if new_files:
+                # Return the newest new file
+                newest_file = max(new_files, key=lambda f: f.stat().st_mtime)
                 return newest_file
 
             time.sleep(1)

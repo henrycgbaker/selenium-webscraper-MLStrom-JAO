@@ -175,6 +175,9 @@ class JAOScraper(BaseScraper):
         time.sleep(3)  # Additional wait for JavaScript
 
         try:
+            # Capture existing files before download to detect new files
+            existing_files = self.selenium_client.get_existing_files()
+
             # Step 1: Click the main "Download" button to open popup
             self.selenium_client.click(self.SELECTORS["download_button"])
             time.sleep(2)  # Wait for popup to appear
@@ -235,7 +238,8 @@ class JAOScraper(BaseScraper):
 
             # Step 5: Wait for download to complete
             downloaded_file = self.selenium_client.wait_for_download(
-                timeout=self.config.download_timeout
+                timeout=self.config.download_timeout,
+                existing_files=existing_files
             )
 
             if downloaded_file is None:
