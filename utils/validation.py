@@ -56,11 +56,35 @@ class CSVValidator:
                 f"File too small ({file_size} bytes, minimum {self.min_file_size})"
             )
 
-        # Try to read as CSV
-        try:
-            df = pd.read_csv(file_path)
-        except Exception as e:
-            raise ValidationError(f"Failed to read CSV: {e}")
+        # Try to read as CSV with different encodings and delimiters
+        encodings = ['utf-8', 'iso-8859-1', 'windows-1252', 'latin1']
+        delimiters = [',', ';']  # Common CSV delimiters
+        df = None
+        last_error = None
+
+        for encoding in encodings:
+            for delimiter in delimiters:
+                try:
+                    df = pd.read_csv(
+                        file_path,
+                        encoding=encoding,
+                        sep=delimiter,
+                        encoding_errors='ignore'  # Ignore BOM and other encoding issues
+                    )
+                    # Check if we actually parsed columns (not just one giant column)
+                    if len(df.columns) > 1:
+                        break  # Success, exit loop
+                except UnicodeDecodeError:
+                    continue  # Try next combination
+                except Exception as e:
+                    last_error = e
+                    continue
+
+            if df is not None and len(df.columns) > 1:
+                break  # Success, exit outer loop
+
+        if df is None or len(df.columns) <= 1:
+            raise ValidationError(f"Failed to read CSV with any encoding/delimiter: {last_error}")
 
         # Check for empty dataframe
         if df.empty and self.min_rows > 0:
