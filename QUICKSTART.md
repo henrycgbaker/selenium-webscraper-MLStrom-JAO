@@ -1,12 +1,11 @@
-# Quick Start Guide - JAO Publication Tool
+# Quick Start Guide - Lightweight web scraper for Jao Publication Tool
 
-This guide will walk you through configuring and running the scraper for the JAO Publication Tool.
+*NB: v1 - this is a quick tool I created for Hertie's Data Science Lab ML Strom project. I briefly worked on extending it out to a generic scraping tool (see [`README`](/Users/henrybaker/Repositories/jao_scraper/README.md)), but this is not fully developed currently (26.11.2025, v1)*
 
 ## Prerequisites
 
 - Python 3.8 or higher
 - Chrome or Firefox browser installed
-- Internet connection
 
 ## Step 1: Install Dependencies
 
@@ -19,32 +18,28 @@ pip install -r requirements.txt
 
 Before you can download data, you need to discover either the API endpoint or the page element selectors.
 
-### Option A: Find the API Endpoint (Recommended - Faster)
+### Option A: Find the API Endpoint (Recommended where possible, but doesn't work for `https://publicationtool.jao.eu/core/maxNetPos`)
 
-1. Open Chrome and navigate to: https://publicationtool.jao.eu/core/maxNetPos
+1. Open Chrome and navigate to site (here: https://publicationtool.jao.eu/core/maxNetPos)
 
 2. Open Chrome DevTools:
    - Press F12, or
    - Right-click → Inspect
 
-3. Click on the "Network" tab in DevTools
+3. Click on the "Network" tab in DevTools > filter by "Fetch/XHR"
 
-4. In the DevTools Network tab, filter by "Fetch/XHR"
+4. On the page, locate buttons in the workflow (here: download > date pickers > CSV)
 
-5. On the JAO page:
-   - Select a date range (e.g., today to today)
-   - Click the download/export button
-
-6. Look for new requests in the Network tab:
+5. Look for new requests in the Network tab:
    - Find requests to `/core/api` or similar
    - Click on the request to see details
 
-7. Note the following information:
-   - **Request URL**: e.g., `https://publicationtool.jao.eu/core/api/data/maxNetPos`
+6. Note the following information:
+   - **Request URL**
    - **Request Method**: GET or POST
    - **Query Parameters** or **Request Payload**: The format of the date parameters
 
-8. Open `scrapers/jao_scraper.py` and update:
+7. Open `scrapers/jao_scraper.py` and update:
 
 ```python
 # Line 28: Set USE_API to True
@@ -66,36 +61,28 @@ def _download_via_api(self, target_date: date) -> Path:
     # ... rest of method
 ```
 
-### Option B: Find Page Element Selectors (Fallback - Slower)
+### Option B: Find Page Element Selectors (Fallback - but works for our page)
 
 If the API approach doesn't work, you can use Selenium to automate the browser:
 
-1. Open Chrome and navigate to: https://publicationtool.jao.eu/core/maxNetPos
+1. Open Chrome and navigate to site (here: https://publicationtool.jao.eu/core/maxNetPos)
 
-2. Open Chrome DevTools (F12)
+2. Open Chrome DevTools (F12 / right-click inspect) > Click the "Elements" tab
 
-3. Click the "Elements" tab
-
-4. Find the date picker:
-   - Right-click on the date input field → Inspect
-   - Note the element's selector (ID, class, or CSS selector)
-   - Example: `input#startDate` or `.date-picker-start`
-
-5. Find the download button:
-   - Right-click on the download button → Inspect
-   - Note the selector
-   - Example: `button.export-csv` or `#downloadButton`
+3. On the page, locate buttons in the workflow (here: download > date pickers > CSV)
+   - Right-click → Inspect
+   - Note elements' selector (ID, class, or CSS selector)
 
 6. Open `scrapers/jao_scraper.py` and update:
 
 ```python
 # Lines 30-35: Update the SELECTORS dictionary
-SELECTORS = {
-    "start_date_input": "input#startDate",      # Your actual selector
-    "end_date_input": "input#endDate",          # Your actual selector
-    "download_button": "button.export-csv",     # Your actual selector
-    "csv_button": "button#csvFormat",           # If needed
-}
+    SELECTORS = {
+        "download_button": "button.pageButton_rpP4hV2OM0",  # Main download button
+        "from_datetime_input": "input.inputBorder",  # From datetime (first one in popup)
+        "to_datetime_input": "input.inputBorder",  # To datetime (second one in popup)
+        "csv_button": "button.popupButton_GRkGEahdXf",  # CSV button in popup
+    }
 
 # Lines 120-150: Update the _download_via_selenium method
 # Uncomment and modify the interaction code based on your selectors
@@ -122,8 +109,7 @@ This will:
 
 Check that:
 - Files are downloaded successfully
-- Files contain valid data
-- No errors in the output
+- Files contain valid data (run `/tests/validate_csv.py`)
 
 ## Step 4: Run the Full Download
 
@@ -166,13 +152,7 @@ python main.py list-dates -s ./jao_data/scraper_state.json --failed-only
 
 2. Check the log file (if you specified `--log-file`)
 
-3. Common reasons for failures:
-   - No data available for that date
-   - Network timeout
-   - Rate limiting
-   - Website changes
-
-4. The scraper will automatically retry failed dates up to 3 times
+3. The scraper will automatically retry failed dates up to 3 times
 
 ## Troubleshooting
 
@@ -196,14 +176,6 @@ python main.py jao ... --browser firefox
 ```bash
 python main.py jao ... --rate-limit 30
 ```
-
-### Issue: Empty or invalid CSV files
-
-**Solution**: Some dates may have no data. This is normal. The validator will mark them as failed and you can review them later.
-
-### Issue: Download timeout
-
-**Solution**: Increase timeout in `config.py` or check your internet connection.
 
 ## Advanced Usage
 
@@ -244,19 +216,3 @@ To save all logs to a file for debugging:
 ```bash
 python main.py jao ... --log-file ./scraper.log --verbose
 ```
-
-## Next Steps
-
-- Review downloaded files in `./jao_data/`
-- Check the state file for any failed dates
-- Process/analyze the CSV data as needed
-- Extend the framework for other websites (see README.md)
-
-## Getting Help
-
-If you encounter issues:
-
-1. Run with `--verbose --headed --log-file debug.log`
-2. Check the screenshots in the output directory (on errors)
-3. Review the debug.log file
-4. Verify your selector configuration in `jao_scraper.py`

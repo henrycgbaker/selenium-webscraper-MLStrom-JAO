@@ -1,11 +1,13 @@
-# Web Scraper Framework
+# Web Scraper Architecture
 
-A general-purpose Python framework for automating date-based web scraping tasks with built-in support for the JAO Publication Tool.
+*NB: v1 - this is a quick tool I created for Hertie's Data Science Lab ML Strom project (see [`QUICKSTART.md`](/Users/henrybaker/Repositories/jao_scraper/QUICKSTART.md)). I briefly worked on extending it out to a generic scraping tool, but this is not fully developed currently (26.11.2025, v1)*
+
+A general-purpose Python framework for automating date-based web scraping tasks with built-in support for the JAO Publication Tool (i.e. the immediate use case).
 
 ## Features
 
-- **Hybrid Approach**: Attempts API-based downloads first, falls back to Selenium browser automation
-- **Resume Capability**: Tracks progress and skips already downloaded dates
+- **Hybrid Approach**: API-based downloads + Selenium browser automation
+- **Resume Capability**: Tracks progress, skips already downloaded dates
 - **Rate Limiting**: Respects API rate limits with adaptive throttling
 - **Progress Tracking**: Real-time progress bar and detailed logging
 - **Data Validation**: Validates downloaded CSV files
@@ -13,8 +15,12 @@ A general-purpose Python framework for automating date-based web scraping tasks 
 
 ## Installation
 
-1. Clone or download this repository
-2. Install dependencies:
+### Prerequisites
+
+- Python 3.8 or higher
+- Chrome or Firefox browser installed
+
+### Step 1: Install Dependencies
 
 ```bash
 cd jao_scraper
@@ -25,12 +31,15 @@ pip install -r requirements.txt
 
 ### IMPORTANT: Configuration Required
 
-Before running the scraper, you **must** configure it for the JAO website:
+Before running the scraper, you **must** configure it for the website (here: JAO publications site):
 
 #### Step 1: Discover API Endpoint or Page Elements
 
-1. Open Chrome and navigate to https://publicationtool.jao.eu/core/maxNetPos
-2. Open Chrome DevTools (F12)
+1. Open Chrome and navigate to site (here: https://publicationtool.jao.eu/core/maxNetPos)
+
+2. Open Chrome DevTools:
+   - Press F12, or
+   - Right-click → Inspect
 
 **Option A: Find API Endpoint (Recommended)**
 
