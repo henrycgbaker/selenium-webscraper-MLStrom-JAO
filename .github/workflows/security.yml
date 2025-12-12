@@ -1,0 +1,26 @@
+# Weekly security check
+# Scans for vulnerabilities in dependencies
+
+name: Security
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Monday 9am
+  workflow_dispatch:
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check vulnerabilities
+        run: |
+          pip install safety
+          safety check
+        continue-on-error: true

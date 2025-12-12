@@ -1,0 +1,48 @@
+# Simple CI Workflow
+# Runs basic code quality checks on pushes and PRs
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  quality-checks:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install black isort flake8 bandit safety
+
+      - name: Check formatting (Black)
+        run: black --check --line-length=100 .
+
+      - name: Check imports (isort)
+        run: isort --check-only --profile=black --line-length=100 .
+
+      - name: Lint (Flake8)
+        run: flake8 . --max-line-length=100 --extend-ignore=E203,W503 --exclude=__pycache__,.git,.venv,venv,build,dist
+
+      - name: Security check (Bandit)
+        run: bandit -r . -c pyproject.toml --exclude ./tests/
+        continue-on-error: true
+
+      - name: Dependency vulnerabilities (Safety)
+        run: safety check
+        continue-on-error: true
