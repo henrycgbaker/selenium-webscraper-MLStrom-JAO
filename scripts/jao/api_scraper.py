@@ -22,7 +22,6 @@ if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import requests
-from tqdm import tqdm
 
 from scripts.jao.config import (
     DEFAULT_END_DATE,
@@ -31,10 +30,7 @@ from scripts.jao.config import (
     JAO_API_URL,
 )
 from webscraper.core.config import ScraperConfig
-from webscraper.core.rate_limiter import RateLimiter
-from webscraper.core.state import DownloadStatus, StateManager
 from webscraper.scrapers.base import BaseScraper
-from webscraper.utils.dates import generate_date_range
 from webscraper.validation.csv import CSVValidator, create_jao_validator
 
 

@@ -1,7 +1,7 @@
 # Makefile for JAO Scraper Development
 # Provides convenient shortcuts for common development tasks
 
-.PHONY: help install install-dev setup format lint type-check security test clean pre-commit ci all
+.PHONY: help install install-dev setup format lint type-check test clean pre-commit ci all
 
 # Default target
 help:
@@ -16,7 +16,6 @@ help:
 	@echo "  make format         - Format code with Black and isort"
 	@echo "  make lint           - Run Flake8 linting"
 	@echo "  make type-check     - Run mypy type checking"
-	@echo "  make security       - Run security scans (Bandit, Safety)"
 	@echo "  make test           - Run tests"
 	@echo "  make check          - Quick check (format + lint)"
 	@echo "  make ci             - Run all CI checks locally"
@@ -72,18 +71,6 @@ type-check:
 		--ignore-missing-imports \
 		--no-strict-optional
 
-# Run security scans
-security:
-	@echo "Running Bandit..."
-	bandit -r src/ scripts/ \
-		-c pyproject.toml \
-		--exclude ./tests/ || true
-	@echo ""
-	@echo "Running Safety..."
-	safety check || true
-	@echo ""
-	@echo "Security scans complete!"
-
 # Run pre-commit hooks
 pre-commit:
 	@echo "Running pre-commit hooks..."
@@ -100,7 +87,7 @@ ci: format lint type-check test
 	@echo "All CI checks complete!"
 
 # Run all quality checks
-all: format lint type-check security test
+all: format lint type-check test
 	@echo ""
 	@echo "All quality checks complete!"
 
@@ -117,7 +104,6 @@ clean:
 	rm -rf build/ dist/ *.egg-info/ src/*.egg-info/
 	rm -rf .coverage htmlcov/
 	rm -rf .mypy_cache/ .pytest_cache/ .ruff_cache/
-	rm -f bandit-report.json safety-report.json pip-audit-report.json
 	@echo "Clean complete!"
 
 # Validate package structure

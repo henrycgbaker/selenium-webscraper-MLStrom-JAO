@@ -1,8 +1,6 @@
 """CLI interface for webscraper framework using Typer."""
 
-from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import typer
 

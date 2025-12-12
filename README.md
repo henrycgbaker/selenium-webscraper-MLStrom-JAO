@@ -1,10 +1,12 @@
 # Webscraper
 
-A modular Python framework for date-based web scraping with resume capability, rate limiting, and data validation.
+For date-based web scraping with resume capability, rate limiting, and data validation.
+Primary application: scrapiong Joint Allocation Office Publication site. Part of MLStrom project support for Hertie's Data Science Lab.
+
+> see [quickstart](QUICKSTART.md)
 
 ## Features
 
-- **Modular Architecture**: Clean separation between framework and site-specific scrapers
 - **Hybrid Approach**: Support for both API-based and Selenium browser automation
 - **Resume Capability**: Tracks progress, automatically skips completed downloads
 - **Adaptive Rate Limiting**: Respects API limits with automatic backoff
@@ -33,8 +35,8 @@ webscraper/
 │   └── examples/             # Example implementations
 │
 ├── tests/                    # Test suite
-├── pyproject.toml            # Modern Python packaging
-└── Makefile                  # Development commands
+├── pyproject.toml            # Python packaging
+└── Makefile                  # Dev commands
 ```
 
 ## Installation
@@ -225,41 +227,3 @@ BaseScraper.run(start_date, end_date)
      ↓
 Progress summary
 ```
-
-## Troubleshooting
-
-### Rate Limiting (429 errors)
-```bash
-# Reduce rate limit
-python -m scripts.jao.api_scraper --rate-limit 30 ...
-```
-
-### Selenium Browser Issues
-```bash
-# Try Firefox instead of Chrome
-python -m scripts.jao.scraper --browser firefox ...
-
-# Run with visible browser for debugging
-python -m scripts.jao.scraper --headed ...
-```
-
-### Resume After Interruption
-Simply re-run the same command. The scraper automatically skips completed dates.
-
-### Check Failed Downloads
-```bash
-webscraper list-dates --state-file ./data/scraper_state.json --failed-only
-```
-
-## License
-
-MIT License
-
-## Credits
-
-Built with:
-- [Pydantic](https://docs.pydantic.dev/) - Configuration validation
-- [Typer](https://typer.tiangolo.com/) - CLI framework
-- [Selenium](https://www.selenium.dev/) - Browser automation
-- [Requests](https://requests.readthedocs.io/) - HTTP client
-- [tqdm](https://tqdm.github.io/) - Progress bars

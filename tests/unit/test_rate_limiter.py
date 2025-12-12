@@ -2,7 +2,6 @@
 
 import time
 
-import pytest
 
 from webscraper.core.rate_limiter import AdaptiveRateLimiter, RateLimiter
 

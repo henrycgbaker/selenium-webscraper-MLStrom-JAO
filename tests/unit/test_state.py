@@ -38,7 +38,10 @@ class TestStateManager:
             file_path="/path/to/file.csv",
         )
 
-        assert state_manager.state["downloads"]["2024-01-01"]["file_path"] == "/path/to/file.csv"
+        assert (
+            state_manager.state["downloads"]["2024-01-01"]["file_path"]
+            == "/path/to/file.csv"
+        )
 
     def test_set_status_with_error(self, state_manager: StateManager) -> None:
         """Test setting status with error message."""
@@ -48,7 +51,10 @@ class TestStateManager:
             error="Connection timeout",
         )
 
-        assert state_manager.state["downloads"]["2024-01-01"]["error"] == "Connection timeout"
+        assert (
+            state_manager.state["downloads"]["2024-01-01"]["error"]
+            == "Connection timeout"
+        )
 
     def test_get_completed_dates(self, state_manager: StateManager) -> None:
         """Test getting completed dates."""

@@ -112,7 +112,9 @@ class StateManager:
                     self._state["downloads"][date_key]["file_path"] = file_path
                 if error:
                     self._state["downloads"][date_key]["error"] = error
-                self._state["downloads"][date_key]["updated_at"] = datetime.now().isoformat()
+                self._state["downloads"][date_key][
+                    "updated_at"
+                ] = datetime.now().isoformat()
 
             if status in [DownloadStatus.IN_PROGRESS, DownloadStatus.FAILED]:
                 self._state["downloads"][date_key]["attempts"] += 1

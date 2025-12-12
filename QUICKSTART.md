@@ -103,7 +103,7 @@ python -m scripts.jao.api_scraper \
     --output-dir ./data
 ```
 
-## Common Options
+## Options
 
 | Option | Description |
 |--------|-------------|
@@ -113,40 +113,3 @@ python -m scripts.jao.api_scraper \
 | `--rate-limit` | Requests per minute (default: 60) |
 | `--verbose` | Show detailed logs |
 | `--headless/--headed` | Browser visibility (Selenium only) |
-
-## Expected Performance
-
-| Scraper | Speed | Use Case |
-|---------|-------|----------|
-| API | ~60 files/min | Default choice |
-| Selenium | ~15 files/min | When API fails |
-
-For the full JAO dataset (~930 days):
-- API: ~15-20 minutes
-- Selenium: ~60-90 minutes
-
-## Troubleshooting
-
-### "No data returned" errors
-Some dates may not have data. This is normal - the scraper will mark them as failed and continue.
-
-### Rate limiting (429 errors)
-Reduce the rate limit:
-```bash
-python -m scripts.jao.api_scraper --rate-limit 30 ...
-```
-
-### Browser won't start (Selenium)
-Try Firefox:
-```bash
-python -m scripts.jao.scraper --browser firefox ...
-```
-
-### Resume after crash
-Just re-run the same command. Progress is saved automatically.
-
-## Next Steps
-
-- See `README.md` for full documentation
-- See `scripts/examples/` for creating custom scrapers
-- Run `make help` for all available commands

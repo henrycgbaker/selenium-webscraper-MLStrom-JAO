@@ -39,7 +39,10 @@ class RateLimitError(WebscraperError):
     """Raised when rate limits are exceeded."""
 
     def __init__(
-        self, message: str, retry_after: Optional[int] = None, cause: Optional[Exception] = None
+        self,
+        message: str,
+        retry_after: Optional[int] = None,
+        cause: Optional[Exception] = None,
     ) -> None:
         super().__init__(message, cause)
         self.retry_after = retry_after

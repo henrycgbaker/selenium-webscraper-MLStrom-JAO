@@ -1,46 +1,29 @@
 # Development Setup
 
-Quick guide for the Git automation setup in this project.
+Quick guide for the development setup in this project.
 
 ## What's Been Set Up
 
-### 1. Pre-commit Hooks (`.pre-commit-config.yaml`)
+### Pre-commit Hooks (`.pre-commit-config.yaml`)
 Automatically runs before each commit:
 - Trailing whitespace removal
 - File ending fixes
 - **Ruff**: Fast Python linting and formatting
-- **mypy**: Type checking (optional, only for src/ directory)
-- **Bandit**: Security scanning
+- **mypy**: Type checking (for src/ directory)
 
-### 2. GitHub Actions
-
-**CI Workflow** (`.github/workflows/ci.yml`)
-- Runs on every push/PR to main
-- Checks code formatting (Black + isort)
-- Runs linting (Flake8)
-- Runs security scans (Bandit + Safety)
-
-**Security Workflow** (`.github/workflows/security.yml`)
-- Runs weekly (Mondays at 9am)
-- Checks for dependency vulnerabilities
-
-### 3. Dependabot (`.github/dependabot.yml`)
-- Automatically creates PRs for dependency updates
-- Weekly schedule
-
-### 4. Configuration Files
-- `pyproject.toml`: Tool configurations (Black, isort, mypy, Bandit, pytest)
-- `.gitignore`: Updated to ignore development artifacts
+### Configuration Files
+- `pyproject.toml`: Tool configurations (Black, isort, mypy, pytest)
+- `.gitignore`: Ignores development artifacts
 - `Makefile`: Shortcuts for common tasks
 
 ## Quick Start
 
 ### Initial Setup
 ```bash
-# Install pre-commit
-pip install pre-commit
+# Install dev dependencies
+pip install -e ".[dev]"
 
-# Install the hooks
+# Install pre-commit hooks
 pre-commit install
 ```
 
@@ -71,8 +54,11 @@ make format
 # Run linting
 make lint
 
+# Run tests
+make test
+
 # Run all checks
-make check
+make all
 ```
 
 ## Code Style
@@ -100,5 +86,3 @@ git commit --no-verify -m "message"
 ```bash
 pre-commit autoupdate
 ```
-
-That's it! The setup is intentionally minimal and practical.

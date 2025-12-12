@@ -24,7 +24,6 @@ if __name__ == "__main__":
 
 from scripts.jao.config import (
     DEFAULT_END_DATE,
-    DEFAULT_REQUESTS_PER_MINUTE,
     DEFAULT_START_DATE,
     JAO_PAGE_URL,
     JAO_SELECTORS,
