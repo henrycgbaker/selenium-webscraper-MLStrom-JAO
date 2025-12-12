@@ -1,27 +1,42 @@
 """Selenium-based browser automation client."""
+
+import time
+from pathlib import Path
+from types import TracebackType
+from typing import Any, Optional
+
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
-from pathlib import Path
-from typing import Optional, List
-import time
-import os
+
+from webscraper.exceptions import BrowserClientError
 
 
-class SeleniumClientError(Exception):
-    """Custom exception for Selenium client errors."""
+class BrowserClient:
+    """Browser automation client using Selenium.
 
-    pass
+    Features:
+    - Chrome and Firefox support
+    - Headless mode
+    - Automatic webdriver management
+    - Download directory configuration
+    - Element waiting with timeouts
+    - Screenshot capability for debugging
 
-
-class SeleniumClient:
-    """Browser automation client using Selenium."""
+    Example:
+        >>> with BrowserClient(headless=True, download_dir=Path("./downloads")) as client:
+        ...     client.navigate("https://example.com")
+        ...     client.click("#download-button")
+        ...     file_path = client.wait_for_download(timeout=60)
+    """
 
     def __init__(
         self,
@@ -30,7 +45,7 @@ class SeleniumClient:
         download_dir: Optional[Path] = None,
         page_load_timeout: int = 30,
         element_wait_timeout: int = 20,
-    ):
+    ) -> None:
         """Initialize Selenium client.
 
         Args:
@@ -45,23 +60,23 @@ class SeleniumClient:
         self.download_dir = download_dir
         self.page_load_timeout = page_load_timeout
         self.element_wait_timeout = element_wait_timeout
-        self.driver = None
-        self.wait = None
+        self._driver: Optional[WebDriver] = None
+        self._wait: Optional[WebDriverWait[WebDriver]] = None
 
-    def start(self):
+    def start(self) -> None:
         """Start the browser."""
-        if self.driver is not None:
+        if self._driver is not None:
             return
 
         if self.browser == "chrome":
-            self.driver = self._create_chrome_driver()
+            self._driver = self._create_chrome_driver()
         elif self.browser == "firefox":
-            self.driver = self._create_firefox_driver()
+            self._driver = self._create_firefox_driver()
         else:
-            raise SeleniumClientError(f"Unsupported browser: {self.browser}")
+            raise BrowserClientError(f"Unsupported browser: {self.browser}")
 
-        self.driver.set_page_load_timeout(self.page_load_timeout)
-        self.wait = WebDriverWait(self.driver, self.element_wait_timeout)
+        self._driver.set_page_load_timeout(self.page_load_timeout)
+        self._wait = WebDriverWait(self._driver, self.element_wait_timeout)
 
     def _create_chrome_driver(self) -> webdriver.Chrome:
         """Create Chrome webdriver."""
@@ -110,23 +125,26 @@ class SeleniumClient:
         service = FirefoxService(GeckoDriverManager().install())
         return webdriver.Firefox(service=service, options=options)
 
-    def navigate(self, url: str):
+    def navigate(self, url: str) -> None:
         """Navigate to URL.
 
         Args:
             url: URL to navigate to
         """
-        if not self.driver:
-            raise SeleniumClientError("Driver not started. Call start() first.")
+        if not self._driver:
+            raise BrowserClientError("Driver not started. Call start() first.")
 
         try:
-            self.driver.get(url)
-        except TimeoutException:
-            raise SeleniumClientError(f"Page load timeout for {url}")
+            self._driver.get(url)
+        except TimeoutException as e:
+            raise BrowserClientError(f"Page load timeout for {url}", cause=e)
 
     def wait_for_element(
-        self, selector: str, by: By = By.CSS_SELECTOR, timeout: Optional[int] = None
-    ):
+        self,
+        selector: str,
+        by: By = By.CSS_SELECTOR,
+        timeout: Optional[int] = None,
+    ) -> WebElement:
         """Wait for element to be present.
 
         Args:
@@ -138,24 +156,28 @@ class SeleniumClient:
             WebElement
 
         Raises:
-            SeleniumClientError: If element not found
+            BrowserClientError: If element not found
         """
-        if not self.driver:
-            raise SeleniumClientError("Driver not started. Call start() first.")
+        if not self._driver:
+            raise BrowserClientError("Driver not started. Call start() first.")
 
         wait_time = timeout if timeout is not None else self.element_wait_timeout
-        wait = WebDriverWait(self.driver, wait_time)
+        wait: WebDriverWait[WebDriver] = WebDriverWait(self._driver, wait_time)
 
         try:
-            return wait.until(EC.presence_of_element_located((by, selector)))
-        except TimeoutException:
-            raise SeleniumClientError(
-                f"Element not found: {selector} (waited {wait_time}s)"
+            element = wait.until(EC.presence_of_element_located((by, selector)))
+            return element  # type: ignore[return-value]
+        except TimeoutException as e:
+            raise BrowserClientError(
+                f"Element not found: {selector} (waited {wait_time}s)", cause=e
             )
 
     def wait_for_clickable(
-        self, selector: str, by: By = By.CSS_SELECTOR, timeout: Optional[int] = None
-    ):
+        self,
+        selector: str,
+        by: By = By.CSS_SELECTOR,
+        timeout: Optional[int] = None,
+    ) -> WebElement:
         """Wait for element to be clickable.
 
         Args:
@@ -166,20 +188,21 @@ class SeleniumClient:
         Returns:
             WebElement
         """
-        if not self.driver:
-            raise SeleniumClientError("Driver not started. Call start() first.")
+        if not self._driver:
+            raise BrowserClientError("Driver not started. Call start() first.")
 
         wait_time = timeout if timeout is not None else self.element_wait_timeout
-        wait = WebDriverWait(self.driver, wait_time)
+        wait: WebDriverWait[WebDriver] = WebDriverWait(self._driver, wait_time)
 
         try:
-            return wait.until(EC.element_to_be_clickable((by, selector)))
-        except TimeoutException:
-            raise SeleniumClientError(
-                f"Element not clickable: {selector} (waited {wait_time}s)"
+            element = wait.until(EC.element_to_be_clickable((by, selector)))
+            return element  # type: ignore[return-value]
+        except TimeoutException as e:
+            raise BrowserClientError(
+                f"Element not clickable: {selector} (waited {wait_time}s)", cause=e
             )
 
-    def click(self, selector: str, by: By = By.CSS_SELECTOR):
+    def click(self, selector: str, by: By = By.CSS_SELECTOR) -> None:
         """Click an element.
 
         Args:
@@ -189,7 +212,7 @@ class SeleniumClient:
         element = self.wait_for_clickable(selector, by)
         element.click()
 
-    def send_keys(self, selector: str, text: str, by: By = By.CSS_SELECTOR):
+    def send_keys(self, selector: str, text: str, by: By = By.CSS_SELECTOR) -> None:
         """Send keys to an element.
 
         Args:
@@ -201,7 +224,9 @@ class SeleniumClient:
         element.clear()
         element.send_keys(text)
 
-    def get_element(self, selector: str, by: By = By.CSS_SELECTOR):
+    def get_element(
+        self, selector: str, by: By = By.CSS_SELECTOR
+    ) -> Optional[WebElement]:
         """Get element by selector.
 
         Args:
@@ -211,15 +236,15 @@ class SeleniumClient:
         Returns:
             WebElement or None if not found
         """
-        if not self.driver:
-            raise SeleniumClientError("Driver not started. Call start() first.")
+        if not self._driver:
+            raise BrowserClientError("Driver not started. Call start() first.")
 
         try:
-            return self.driver.find_element(by, selector)
+            return self._driver.find_element(by, selector)
         except NoSuchElementException:
             return None
 
-    def get_elements(self, selector: str, by: By = By.CSS_SELECTOR) -> List:
+    def get_elements(self, selector: str, by: By = By.CSS_SELECTOR) -> list[WebElement]:
         """Get all matching elements.
 
         Args:
@@ -229,12 +254,12 @@ class SeleniumClient:
         Returns:
             List of WebElements
         """
-        if not self.driver:
-            raise SeleniumClientError("Driver not started. Call start() first.")
+        if not self._driver:
+            raise BrowserClientError("Driver not started. Call start() first.")
 
-        return self.driver.find_elements(by, selector)
+        return self._driver.find_elements(by, selector)
 
-    def get_existing_files(self) -> set:
+    def get_existing_files(self) -> set[Path]:
         """Get set of existing files in download directory.
 
         Call this before triggering a download to track what's new.
@@ -246,7 +271,11 @@ class SeleniumClient:
             return set()
         return {f for f in self.download_dir.iterdir() if f.is_file()}
 
-    def wait_for_download(self, timeout: int = 60, existing_files: Optional[set] = None) -> Optional[Path]:
+    def wait_for_download(
+        self,
+        timeout: int = 60,
+        existing_files: Optional[set[Path]] = None,
+    ) -> Optional[Path]:
         """Wait for a file to be downloaded.
 
         Args:
@@ -258,7 +287,7 @@ class SeleniumClient:
             Path to downloaded file or None
         """
         if not self.download_dir:
-            raise SeleniumClientError("Download directory not set")
+            raise BrowserClientError("Download directory not set")
 
         # If no existing_files provided, get current snapshot (less reliable)
         if existing_files is None:
@@ -283,7 +312,8 @@ class SeleniumClient:
 
             # Filter out hidden files and common non-download files
             new_files = {
-                f for f in new_files
+                f
+                for f in new_files
                 if not f.name.startswith(".")
                 and not f.name.endswith(".json")  # Exclude state files
             }
@@ -297,7 +327,7 @@ class SeleniumClient:
 
         return None
 
-    def execute_script(self, script: str):
+    def execute_script(self, script: str) -> Any:
         """Execute JavaScript.
 
         Args:
@@ -306,35 +336,49 @@ class SeleniumClient:
         Returns:
             Script result
         """
-        if not self.driver:
-            raise SeleniumClientError("Driver not started. Call start() first.")
+        if not self._driver:
+            raise BrowserClientError("Driver not started. Call start() first.")
 
-        return self.driver.execute_script(script)
+        return self._driver.execute_script(script)
 
-    def screenshot(self, output_path: Path):
+    def screenshot(self, output_path: Path) -> None:
         """Take screenshot.
 
         Args:
             output_path: Path to save screenshot
         """
-        if not self.driver:
-            raise SeleniumClientError("Driver not started. Call start() first.")
+        if not self._driver:
+            raise BrowserClientError("Driver not started. Call start() first.")
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        self.driver.save_screenshot(str(output_path))
+        self._driver.save_screenshot(str(output_path))
 
-    def quit(self):
+    def quit(self) -> None:
         """Close the browser."""
-        if self.driver:
-            self.driver.quit()
-            self.driver = None
-            self.wait = None
+        if self._driver:
+            self._driver.quit()
+            self._driver = None
+            self._wait = None
 
-    def __enter__(self):
+    def close(self) -> None:
+        """Alias for quit() for protocol compatibility."""
+        self.quit()
+
+    def __enter__(self) -> "BrowserClient":
         """Context manager entry."""
         self.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         """Context manager exit."""
         self.quit()
+
+    @property
+    def driver(self) -> Optional[WebDriver]:
+        """Access the underlying WebDriver (for advanced usage)."""
+        return self._driver

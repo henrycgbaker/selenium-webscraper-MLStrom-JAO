@@ -1,14 +1,28 @@
 """Progress tracking and logging utilities."""
-import sys
+
 import logging
-from typing import Optional
+import sys
 from pathlib import Path
-from datetime import datetime
+from typing import Optional
+
 from tqdm import tqdm
 
 
 class ProgressLogger:
-    """Handles progress tracking and logging."""
+    """Handles progress tracking and logging.
+
+    Combines a tqdm progress bar with Python logging for comprehensive
+    progress reporting during scraping operations.
+
+    Example:
+        >>> with ProgressLogger(total=100, desc="Downloading") as progress:
+        ...     for item in items:
+        ...         result = download(item)
+        ...         if result.success:
+        ...             progress.log_success(item, "Downloaded")
+        ...         else:
+        ...             progress.log_failure(item, result.error)
+    """
 
     def __init__(
         self,
@@ -16,7 +30,7 @@ class ProgressLogger:
         desc: str = "Progress",
         verbose: bool = False,
         log_file: Optional[Path] = None,
-    ):
+    ) -> None:
         """Initialize progress logger.
 
         Args:
@@ -31,10 +45,10 @@ class ProgressLogger:
         self.log_file = log_file
 
         # Setup logging
-        self.logger = self._setup_logger()
+        self._logger = self._setup_logger()
 
         # Setup progress bar
-        self.pbar = tqdm(
+        self._pbar = tqdm(
             total=total,
             desc=desc,
             unit="item",
@@ -47,7 +61,7 @@ class ProgressLogger:
 
     def _setup_logger(self) -> logging.Logger:
         """Setup logger with file and console handlers."""
-        logger = logging.getLogger("jao_scraper")
+        logger = logging.getLogger("webscraper")
         logger.setLevel(logging.DEBUG if self.verbose else logging.INFO)
 
         # Prevent duplicate handlers
@@ -77,15 +91,15 @@ class ProgressLogger:
 
         return logger
 
-    def update(self, n: int = 1):
+    def update(self, n: int = 1) -> None:
         """Update progress bar.
 
         Args:
             n: Number of items to increment by
         """
-        self.pbar.update(n)
+        self._pbar.update(n)
 
-    def log_success(self, item: str, message: str = ""):
+    def log_success(self, item: str, message: str = "") -> None:
         """Log successful operation.
 
         Args:
@@ -94,13 +108,13 @@ class ProgressLogger:
         """
         self.completed += 1
         self.update()
-        log_msg = f"✓ {item}"
+        log_msg = f"[OK] {item}"
         if message:
             log_msg += f" - {message}"
         if self.verbose:
-            self.logger.info(log_msg)
+            self._logger.info(log_msg)
 
-    def log_failure(self, item: str, error: str):
+    def log_failure(self, item: str, error: str) -> None:
         """Log failed operation.
 
         Args:
@@ -109,10 +123,10 @@ class ProgressLogger:
         """
         self.failed += 1
         self.update()
-        log_msg = f"✗ {item} - ERROR: {error}"
-        self.logger.error(log_msg)
+        log_msg = f"[FAIL] {item} - ERROR: {error}"
+        self._logger.error(log_msg)
 
-    def log_skip(self, item: str, reason: str = "already completed"):
+    def log_skip(self, item: str, reason: str = "already completed") -> None:
         """Log skipped operation.
 
         Args:
@@ -122,42 +136,42 @@ class ProgressLogger:
         self.skipped += 1
         self.update()
         if self.verbose:
-            self.logger.info(f"⊘ {item} - SKIPPED: {reason}")
+            self._logger.info(f"[SKIP] {item} - {reason}")
 
-    def log_info(self, message: str):
+    def log_info(self, message: str) -> None:
         """Log info message.
 
         Args:
             message: Message to log
         """
-        self.logger.info(message)
+        self._logger.info(message)
 
-    def log_warning(self, message: str):
+    def log_warning(self, message: str) -> None:
         """Log warning message.
 
         Args:
             message: Message to log
         """
-        self.logger.warning(message)
+        self._logger.warning(message)
 
-    def log_debug(self, message: str):
+    def log_debug(self, message: str) -> None:
         """Log debug message.
 
         Args:
             message: Message to log
         """
         if self.verbose:
-            self.logger.debug(message)
+            self._logger.debug(message)
 
-    def set_description(self, desc: str):
+    def set_description(self, desc: str) -> None:
         """Update progress bar description.
 
         Args:
             desc: New description
         """
-        self.pbar.set_description(desc)
+        self._pbar.set_description(desc)
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, int]:
         """Get current statistics.
 
         Returns:
@@ -171,25 +185,39 @@ class ProgressLogger:
             "remaining": self.total - self.completed - self.failed - self.skipped,
         }
 
-    def print_summary(self):
+    def print_summary(self) -> None:
         """Print final summary."""
-        self.pbar.close()
+        self._pbar.close()
         stats = self.get_stats()
-        self.logger.info("\n" + "=" * 60)
-        self.logger.info("SCRAPING SUMMARY")
-        self.logger.info("=" * 60)
-        self.logger.info(f"Total items:     {stats['total']}")
-        self.logger.info(f"Completed:       {stats['completed']}")
-        self.logger.info(f"Failed:          {stats['failed']}")
-        self.logger.info(f"Skipped:         {stats['skipped']}")
+        self._logger.info("")
+        self._logger.info("=" * 60)
+        self._logger.info("SCRAPING SUMMARY")
+        self._logger.info("=" * 60)
+        self._logger.info(f"Total items:     {stats['total']}")
+        self._logger.info(f"Completed:       {stats['completed']}")
+        self._logger.info(f"Failed:          {stats['failed']}")
+        self._logger.info(f"Skipped:         {stats['skipped']}")
         success_rate = (
-            (stats["completed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+            (stats["completed"] / stats["total"] * 100) if stats["total"] > 0 else 0.0
         )
-        self.logger.info(f"Success rate:    {success_rate:.1f}%")
-        self.logger.info("=" * 60)
+        self._logger.info(f"Success rate:    {success_rate:.1f}%")
+        self._logger.info("=" * 60)
 
-    def close(self):
+    def close(self) -> None:
         """Close progress bar and handlers."""
-        self.pbar.close()
-        for handler in self.logger.handlers:
+        self._pbar.close()
+        for handler in self._logger.handlers:
             handler.close()
+
+    def __enter__(self) -> "ProgressLogger":
+        """Context manager entry."""
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: object,
+    ) -> None:
+        """Context manager exit."""
+        self.close()
