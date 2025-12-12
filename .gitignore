@@ -52,3 +52,42 @@ custom_state.json
 # Selenium
 *.png
 screenshots/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+.tox/
+
+# Type checking and linting
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.dmypy.json
+dmypy.json
+
+# Security scanning reports
+bandit-report.json
+safety-report.json
+pip-audit-report.json
+
+# Build
+*.egg-info/
+src/*.egg-info/
+
+# Documentation
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# CI/CD
+.github/workflows/*.log
+
+# Pre-commit
+.pre-commit-config.yaml.backup
+.claude/

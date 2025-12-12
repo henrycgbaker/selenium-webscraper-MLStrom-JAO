@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jao_scraper"
+name = "selenium-webscraper"
 version = "1.1.0"
 description = "Web scraping framework for JAO Publication Tool and other date-based data sources"
 readme = "README.md"
@@ -61,7 +61,7 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/henrybaker/jao_scraper"
+Homepage = "https://github.com/henrycgbaker/selenium-webscraper-MLStrom-JAO"
 
 # Black configuration - Python code formatter
 [tool.black]
