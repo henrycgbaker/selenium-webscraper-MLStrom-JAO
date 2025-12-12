@@ -1,218 +1,152 @@
-# Quick Start Guide - Lightweight web scraper for Jao Publication Tool
+# Quick Start Guide
 
-*NB: v1 - this is a quick tool I created for Hertie's Data Science Lab ML Strom project. I briefly worked on extending it out to a generic scraping tool (see [`README`](/Users/henrybaker/Repositories/jao_scraper/README.md)), but this is not fully developed currently (26.11.2025, v1)*
+Quickstart for application: JAO Publication Tool
 
 ## Prerequisites
 
-- Python 3.8 or higher
-- Chrome or Firefox browser installed
+- Python 3.9+
+- Chrome browser (for Selenium scraper)
 
-## Step 1: Install Dependencies
-
-```bash
-cd jao_scraper
-pip install -r requirements.txt
-```
-
-## Step 2: Configure the Scraper (IMPORTANT!)
-
-Before you can download data, you need to discover either the API endpoint or the page element selectors.
-
-### Option A: Find the API Endpoint (Recommended where possible, but doesn't work for `https://publicationtool.jao.eu/core/maxNetPos`)
-
-1. Open Chrome and navigate to site (here: https://publicationtool.jao.eu/core/maxNetPos)
-
-2. Open Chrome DevTools:
-   - Press F12, or
-   - Right-click → Inspect
-
-3. Click on the "Network" tab in DevTools > filter by "Fetch/XHR"
-
-4. On the page, locate buttons in the workflow (here: download > date pickers > CSV)
-
-5. Look for new requests in the Network tab:
-   - Find requests to `/core/api` or similar
-   - Click on the request to see details
-
-6. Note the following information:
-   - **Request URL**
-   - **Request Method**: GET or POST
-   - **Query Parameters** or **Request Payload**: The format of the date parameters
-
-7. Open `scrapers/jao_scraper.py` and update:
-
-```python
-# Line 28: Set USE_API to True
-USE_API = True
-
-# Line 26: Update the API endpoint
-API_ENDPOINT = "/api/data/maxNetPos"  # Replace with actual endpoint
-
-# Lines 79-87: Update the _download_via_api method
-def _download_via_api(self, target_date: date) -> Path:
-    date_str = target_date.strftime("%Y-%m-%d")
-
-    # Update based on what you saw in DevTools:
-    params = {
-        "date": date_str,  # Adjust parameter names
-        "format": "csv"    # Add any other required parameters
-    }
-
-    # ... rest of method
-```
-
-### Option B: Find Page Element Selectors (Fallback - but works for our page)
-
-If the API approach doesn't work, you can use Selenium to automate the browser:
-
-1. Open Chrome and navigate to site (here: https://publicationtool.jao.eu/core/maxNetPos)
-
-2. Open Chrome DevTools (F12 / right-click inspect) > Click the "Elements" tab
-
-3. On the page, locate buttons in the workflow (here: download > date pickers > CSV)
-   - Right-click → Inspect
-   - Note elements' selector (ID, class, or CSS selector)
-
-6. Open `scrapers/jao_scraper.py` and update:
-
-```python
-# Lines 30-35: Update the SELECTORS dictionary
-    SELECTORS = {
-        "download_button": "button.pageButton_rpP4hV2OM0",  # Main download button
-        "from_datetime_input": "input.inputBorder",  # From datetime (first one in popup)
-        "to_datetime_input": "input.inputBorder",  # To datetime (second one in popup)
-        "csv_button": "button.popupButton_GRkGEahdXf",  # CSV button in popup
-    }
-
-# Lines 120-150: Update the _download_via_selenium method
-# Uncomment and modify the interaction code based on your selectors
-```
-
-## Step 3: Test with a Small Date Range
-
-Before downloading ~930 days of data, test with just 2-3 days:
+## Step 1: Install
 
 ```bash
-python main.py jao \
-  --start-date 2024-01-01 \
-  --end-date 2024-01-03 \
-  --output-dir ./test_data \
-  --verbose \
-  --headed
+cd webscraper
+pip install -e .
 ```
 
-This will:
-- Download data for 3 days only
-- Show you the browser window (`--headed`)
-- Print detailed logs (`--verbose`)
-- Save files to `./test_data`
+Or with development tools:
+```bash
+pip install -e ".[dev]"
+```
 
-Check that:
-- Files are downloaded successfully
-- Files contain valid data (run `/tests/validate_csv.py`)
+## Step 2: Run the JAO Scraper
 
-## Step 4: Run the Full Download
+### Option A: API Scraper (Recommended)
 
-Once testing is successful, download all the data:
+The API scraper is faster and more reliable:
 
 ```bash
-python main.py jao \
-  --start-date 2022-06-08 \
-  --end-date 2024-12-31 \
-  --output-dir ./jao_data \
-  --rate-limit 60 \
-  --verbose
+# Download all available data
+python -m scripts.jao.api_scraper \
+    --start-date 2022-06-08 \
+    --end-date 2024-12-31 \
+    --output-dir ./data
+
+# Or test with a small date range first
+python -m scripts.jao.api_scraper \
+    --start-date 2024-01-01 \
+    --end-date 2024-01-07 \
+    --output-dir ./test_data \
+    --verbose
 ```
 
-This will:
-- Download ~930 files (one per day)
-- Take 15-90 minutes depending on method (API vs Selenium)
-- Save files to `./jao_data/`
-- Create a state file for resume capability
-- Show progress bar and statistics
+### Option B: Selenium Scraper
 
-## Step 5: Monitor Progress
-
-In another terminal, check the status:
+Use if the API approach doesn't work:
 
 ```bash
-python main.py status -s ./jao_data/scraper_state.json
+python -m scripts.jao.scraper \
+    --start-date 2024-01-01 \
+    --end-date 2024-01-07 \
+    --output-dir ./test_data \
+    --verbose \
+    --headed  # Shows browser window for debugging
 ```
 
-If the script is interrupted, simply re-run the command from Step 4. It will automatically resume from where it left off.
+### Using Make (Optional)
 
-## Step 6: Handle Failures
-
-If some dates fail to download:
-
-1. Check which dates failed:
 ```bash
-python main.py list-dates -s ./jao_data/scraper_state.json --failed-only
+# Run API scraper with default dates
+make jao-api
+
+# Customize dates
+make jao-api JAO_START_DATE=2024-01-01 JAO_END_DATE=2024-06-30
+
+# Check progress
+make status
 ```
 
-2. Check the log file (if you specified `--log-file`)
+## Step 3: Monitor Progress
 
-3. The scraper will automatically retry failed dates up to 3 times
+Check status while running (in another terminal):
+
+```bash
+webscraper status --state-file ./data/scraper_state.json
+```
+
+Output:
+```
+============================================================
+Scraping Session Status
+============================================================
+Total items: 930
+Completed:   450
+Failed:      2
+In progress: 1
+Pending:     477
+Success rate: 48.4%
+============================================================
+```
+
+## Step 4: Handle Failures
+
+If some dates fail:
+
+```bash
+# List failed dates
+webscraper list-dates --state-file ./data/scraper_state.json --failed-only
+
+# Simply re-run - failed dates will be retried
+python -m scripts.jao.api_scraper \
+    --start-date 2022-06-08 \
+    --end-date 2024-12-31 \
+    --output-dir ./data
+```
+
+## Common Options
+
+| Option | Description |
+|--------|-------------|
+| `--start-date` | Start date (YYYY-MM-DD) |
+| `--end-date` | End date (YYYY-MM-DD) |
+| `--output-dir` | Where to save files |
+| `--rate-limit` | Requests per minute (default: 60) |
+| `--verbose` | Show detailed logs |
+| `--headless/--headed` | Browser visibility (Selenium only) |
+
+## Expected Performance
+
+| Scraper | Speed | Use Case |
+|---------|-------|----------|
+| API | ~60 files/min | Default choice |
+| Selenium | ~15 files/min | When API fails |
+
+For the full JAO dataset (~930 days):
+- API: ~15-20 minutes
+- Selenium: ~60-90 minutes
 
 ## Troubleshooting
 
-### Issue: "Driver not started" error
+### "No data returned" errors
+Some dates may not have data. This is normal - the scraper will mark them as failed and continue.
 
-**Solution**: The Selenium client failed to start. Try:
+### Rate limiting (429 errors)
+Reduce the rate limit:
 ```bash
-# Use Firefox instead
-python main.py jao ... --browser firefox
-
-# Or update Chrome to latest version
+python -m scripts.jao.api_scraper --rate-limit 30 ...
 ```
 
-### Issue: "Element not found" error
-
-**Solution**: The page structure changed or selectors are wrong. Repeat Step 2 to find correct selectors.
-
-### Issue: Rate limiting (429 errors)
-
-**Solution**: Reduce the rate limit:
+### Browser won't start (Selenium)
+Try Firefox:
 ```bash
-python main.py jao ... --rate-limit 30
+python -m scripts.jao.scraper --browser firefox ...
 ```
 
-## Advanced Usage
+### Resume after crash
+Just re-run the same command. Progress is saved automatically.
 
-### Resume from a Failed Run
+## Next Steps
 
-If the scraper crashes or you stop it, just run the same command again:
-
-```bash
-python main.py jao \
-  --start-date 2022-06-08 \
-  --end-date 2024-12-31 \
-  --output-dir ./jao_data \
-  --resume
-```
-
-The `--resume` flag (default) will skip already completed dates.
-
-### Reset and Start Over
-
-To clear all progress and start fresh:
-
-```bash
-python main.py reset -s ./jao_data/scraper_state.json
-```
-
-### Run Without Validation (Faster)
-
-To skip CSV validation (not recommended):
-
-```bash
-python main.py jao ... --no-validate
-```
-
-### Save Detailed Logs
-
-To save all logs to a file for debugging:
-
-```bash
-python main.py jao ... --log-file ./scraper.log --verbose
-```
+- See `README.md` for full documentation
+- See `scripts/examples/` for creating custom scrapers
+- Run `make help` for all available commands
