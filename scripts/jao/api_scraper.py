@@ -21,15 +21,16 @@ from typing import Any, Optional
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-import requests
-
 from scripts.jao.config import (
     DEFAULT_END_DATE,
     DEFAULT_REQUESTS_PER_MINUTE,
     DEFAULT_START_DATE,
     JAO_API_URL,
+    JAO_BASE_URL,
 )
+from webscraper.core.clients.http import HttpClient
 from webscraper.core.config import ScraperConfig
+from webscraper.exceptions import HttpClientError
 from webscraper.scrapers.base import BaseScraper
 from webscraper.validation.csv import CSVValidator, create_jao_validator
 
@@ -59,20 +60,25 @@ class JAOAPIScraper(BaseScraper):
         """
         super().__init__(config)
         self.api_url = api_url
-        self._session: Optional[requests.Session] = None
+        self._http_client: Optional[HttpClient] = None
 
     @property
-    def session(self) -> requests.Session:
-        """Get HTTP session (lazy initialization)."""
-        if self._session is None:
-            self._session = requests.Session()
-            self._session.headers.update(
+    def http_client(self) -> HttpClient:
+        """Get HTTP client (lazy initialization)."""
+        if self._http_client is None:
+            self._http_client = HttpClient(
+                base_url=JAO_BASE_URL,
+                timeout=self.config.request_timeout,
+                max_retries=self.config.max_retries,
+                retry_delay=self.config.retry_delay,
+            )
+            self._http_client.set_headers(
                 {
                     "Accept": "application/json",
                     "User-Agent": "Mozilla/5.0 (compatible; JAOScraper/1.0)",
                 }
             )
-        return self._session
+        return self._http_client
 
     def get_validator(self) -> CSVValidator:
         """Get validator for JAO CSV files."""
@@ -110,21 +116,25 @@ class JAOAPIScraper(BaseScraper):
 
         Returns:
             List of data records
+
+        Raises:
+            HttpClientError: If request fails after retries
         """
+        self.rate_limiter.wait_if_needed()
+
         from_utc = f"{target_date.isoformat()}T00:00:00.000Z"
         to_utc = f"{(target_date + timedelta(days=1)).isoformat()}T00:00:00.000Z"
 
         params = {"FromUtc": from_utc, "ToUtc": to_utc}
 
-        response = self.session.get(
-            self.api_url,
-            params=params,
-            timeout=self.config.request_timeout,
-        )
-        response.raise_for_status()
-
-        json_data = response.json()
-        return json_data.get("data", [])
+        try:
+            response = self.http_client.get("api/data/maxNetPos", params=params)
+            json_data = response.json()
+            return json_data.get("data", [])
+        except HttpClientError as e:
+            if "429" in str(e) or "rate limit" in str(e).lower():
+                self.rate_limiter.on_429_response(self.config.retry_delay)
+            raise
 
     def _save_as_csv(self, data: list[dict[str, Any]], output_path: Path) -> None:
         """Save data as CSV file.
@@ -144,10 +154,10 @@ class JAOAPIScraper(BaseScraper):
             writer.writerows(data)
 
     def cleanup(self) -> None:
-        """Close HTTP session."""
-        if self._session:
-            self._session.close()
-            self._session = None
+        """Close HTTP client."""
+        if self._http_client:
+            self._http_client.close()
+            self._http_client = None
 
 
 def run_jao_api_scraper(

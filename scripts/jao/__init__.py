@@ -1,9 +1,9 @@
-"""JAO Publication Tool scraper scripts."""
+"""JAO Publication Tool scraper scripts.
 
-from scripts.jao.api_scraper import JAOAPIScraper
-from scripts.jao.scraper import JAOSeleniumScraper
+Available scrapers:
+- JAOAPIScraper: from scripts.jao.api_scraper import JAOAPIScraper
+- JAOSeleniumScraper: from scripts.jao.scraper import JAOSeleniumScraper
+"""
 
-__all__ = [
-    "JAOAPIScraper",
-    "JAOSeleniumScraper",
-]
+# Not importing scrapers here to avoid circular import issues
+# when running scripts directly with `python -m scripts.jao.xxx`

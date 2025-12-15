@@ -113,3 +113,42 @@ python -m scripts.jao.api_scraper \
 | `--rate-limit` | Requests per minute (default: 60) |
 | `--verbose` | Show detailed logs |
 | `--headless/--headed` | Browser visibility (Selenium only) |
+
+## Troubleshooting
+
+### Rate Limit Errors (429)
+
+If you see "429 Too Many Requests" errors:
+
+1. **The scraper will automatically retry** with backoff - wait for it to recover
+2. **Use a lower rate limit** if issues persist:
+   ```bash
+   python -m scripts.jao.api_scraper \
+       --rate-limit 30 \
+       --start-date 2024-01-01 \
+       --end-date 2024-12-31 \
+       --output-dir ./data
+   ```
+3. **Failed dates are tracked** - simply re-run the scraper to retry them
+
+### Resuming Interrupted Downloads
+
+The scraper automatically tracks progress. If interrupted:
+
+```bash
+# Just re-run with the same parameters - completed dates will be skipped
+python -m scripts.jao.api_scraper \
+    --start-date 2022-06-08 \
+    --end-date 2024-12-31 \
+    --output-dir ./data
+```
+
+### Checking What Failed
+
+```bash
+# See failed dates
+webscraper list-dates --state-file ./data/scraper_state.json --failed-only
+
+# See full status
+webscraper status --state-file ./data/scraper_state.json
+```

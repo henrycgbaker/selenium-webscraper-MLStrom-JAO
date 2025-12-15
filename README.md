@@ -1,7 +1,10 @@
 # Webscraper
 
-For date-based web scraping with resume capability, rate limiting, and data validation.
-Primary application: scrapiong Joint Allocation Office Publication site. Part of MLStrom project support for Hertie's Data Science Lab.
+Basic functionality for date-based web scraping with resume capability, rate limiting, and data validation.
+
+- **Primary application**: scrapiong Joint Allocation Office Publication site. Part of MLStrom project support for Hertie's Data Science Lab.
+- Can also be quickly adapted for generalised webscraping (see [Creating Custom Scrapers](#creating-custom-scrapers))
+
 
 > see [quickstart](QUICKSTART.md)
 
@@ -159,6 +162,32 @@ webscraper version
 | `verbose` | False | Enable verbose logging |
 | `headless` | True | Run browser headless |
 | `browser` | "chrome" | Browser choice (chrome/firefox) |
+
+## Rate Limiting
+
+The API scraper includes automatic rate limiting and retry logic:
+
+- **Automatic Retries**: Failed requests retry up to `max_retries` times (default: 3)
+- **429 Handling**: Respects server's `Retry-After` header when rate limited
+- **Adaptive Rate**: Automatically reduces request rate when hitting limits
+
+### Rate Limit Behavior
+
+When a 429 (Too Many Requests) response is received:
+1. The scraper waits for the duration specified in `Retry-After` header (or `retry_delay`)
+2. The rate limiter automatically reduces the request rate
+3. After successful requests, the rate gradually recovers
+
+### Adjusting Rate Limits
+
+```bash
+# Use a lower rate limit if hitting 429 errors frequently
+python -m scripts.jao.api_scraper \
+    --start-date 2024-01-01 \
+    --end-date 2024-12-31 \
+    --rate-limit 30 \
+    --output-dir ./data
+```
 
 ## Development
 
